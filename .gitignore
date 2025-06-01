@@ -1,0 +1,4 @@
+.vercel
+node_module
+.env
+test.html

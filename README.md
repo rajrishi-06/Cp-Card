@@ -2,7 +2,7 @@
 
 Generate beautiful SVG profile cards, rating graphs, and activity heatmaps for competitive programming platforms. Currently supports Codeforces and CodeChef.
 
-![Codeforces Profile Card Demo](https://your-domain.com/card/cf/tourist/profile)
+![Codeforces Profile Card Demo](https://cp-card-4ik8dr0rg-rajrishi-06s-projects.vercel.app/card/cf/tourist/profile)
 
 ## Features ✨
 
@@ -57,17 +57,17 @@ GET /card/cc/{handle}/heatmap
 ### In GitHub README
 
 ```markdown
-![Codeforces Profile](https://your-domain.com/card/cf/your-handle/profile)
-![Codeforces Graph](https://your-domain.com/card/cf/your-handle/graph)
-![Codeforces Heatmap](https://your-domain.com/card/cf/your-handle/heatmap)
+![Codeforces Profile](https://cp-card-4ik8dr0rg-rajrishi-06s-projects.vercel.app/card/cf/your-handle/profile)
+![Codeforces Graph](https://cp-card-4ik8dr0rg-rajrishi-06s-projects.vercel.app/card/cf/your-handle/graph)
+![Codeforces Heatmap](https://cp-card-4ik8dr0rg-rajrishi-06s-projects.vercel.app/card/cf/your-handle/heatmap)
 ```
 
 ### In HTML
 
 ```html
-<img src="https://your-domain.com/card/cf/your-handle/profile" alt="Codeforces Profile">
-<img src="https://your-domain.com/card/cf/your-handle/graph" alt="Codeforces Graph">
-<img src="https://your-domain.com/card/cf/your-handle/heatmap" alt="Codeforces Heatmap">
+<img src="https://cp-card-4ik8dr0rg-rajrishi-06s-projects.vercel.app/card/cf/your-handle/profile" alt="Codeforces Profile">
+<img src="https://cp-card-4ik8dr0rg-rajrishi-06s-projects.vercel.app/card/cf/your-handle/graph" alt="Codeforces Graph">
+<img src="https://cp-card-4ik8dr0rg-rajrishi-06s-projects.vercel.app/card/cf/your-handle/heatmap" alt="Codeforces Heatmap">
 ```
 
 ## Setup 🚀
