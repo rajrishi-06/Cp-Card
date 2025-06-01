@@ -11,9 +11,5 @@
             "src": "/(.*)",
             "dest": "index.js"
         }
-    ],
-    "env": {
-        "API_KEY": "@api_key",
-        "API_SECRET": "@api_secret"
-    }
+    ]
 } 
