@@ -1,0 +1,984 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Competitive Programming Profile Cards API</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: #f8f9fa;
+            padding: 2rem;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        }
+        
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            color: #2d3748;
+        }
+        
+        h2 {
+            font-size: 1.8rem;
+            margin: 2rem 0 1rem;
+            color: #2d3748;
+            border-bottom: 2px solid #edf2f7;
+            padding-bottom: 0.5rem;
+        }
+        
+        p {
+            margin-bottom: 1rem;
+            color: #4a5568;
+        }
+        
+        .platform {
+            margin: 2rem 0;
+            padding: 1.5rem;
+            background: #f7fafc;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+        }
+        
+        .endpoint {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 1rem;
+            border-radius: 6px;
+            font-family: monospace;
+            margin: 1rem 0;
+            overflow-x: auto;
+        }
+        
+        .demo {
+            margin: 1.5rem 0;
+            text-align: center;
+        }
+        
+        .demo img, .demo iframe {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin: 0.5rem auto;
+            display: block;
+        }
+        
+        .demo iframe {
+            width: 100%;
+            min-height: 450px;
+            border: none;
+            background: #fff;
+        }
+        
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin: 2rem 0;
+        }
+        
+        .feature {
+            padding: 1.5rem;
+            background: #f7fafc;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+        }
+        
+        .feature h3 {
+            color: #2d3748;
+            margin-bottom: 0.5rem;
+        }
+        
+        code {
+            background: #edf2f7;
+            padding: 0.2rem 0.4rem;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+        
+        .note {
+            background: #ebf8ff;
+            border-left: 4px solid #4299e1;
+            padding: 1rem;
+            margin: 1rem 0;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .github-corner {
+            position: fixed;
+            top: 0;
+            right: 0;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 1rem;
+            }
+            
+            .container {
+                padding: 1rem;
+            }
+            
+            h1 {
+                font-size: 2rem;
+            }
+            
+            h2 {
+                font-size: 1.5rem;
+            }
+
+            .github-corner {
+                display: none;
+            }
+        }
+
+        .demo-controls {
+            margin: 1rem 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+        
+        .demo-controls input {
+            padding: 0.5rem 1rem;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            font-family: 'Inter', sans-serif;
+            font-size: 14px;
+            width: 200px;
+        }
+        
+        .demo-controls button {
+            padding: 0.5rem 1rem;
+            background: #4299e1;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-family: 'Inter', sans-serif;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        
+        .demo-controls button:hover {
+            background: #3182ce;
+        }
+        
+        .preset-handles {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-top: 0.5rem;
+        }
+        
+        .preset-handle {
+            padding: 0.25rem 0.75rem;
+            background: #edf2f7;
+            border-radius: 20px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        
+        .preset-handle:hover {
+            background: #e2e8f0;
+        }
+
+        .loading {
+            opacity: 0.5;
+            transition: opacity 0.3s;
+        }
+
+        .error-message {
+            color: #e53e3e;
+            text-align: center;
+            margin-top: 0.5rem;
+            font-size: 14px;
+        }
+
+        .loading-container {
+            position: relative;
+            min-height: 200px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #f8f9fa;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 1rem;
+        }
+
+        .loading .loading-spinner {
+            display: block;
+        }
+
+        .loading img, .loading iframe {
+            display: none;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .demo iframe {
+            width: 100%;
+            border: none;
+            border-radius: 8px;
+            background: #fff;
+            min-height: 400px;
+        }
+
+        .card-container {
+            position: relative;
+            min-height: 200px;
+            margin: 1rem auto;
+            max-width: 900px;
+            border-radius: 8px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            background: #fff;
+        }
+
+        .card-container img {
+            width: 100%;
+            height: auto;
+            display: block;
+            transition: opacity 0.3s ease;
+        }
+
+        .card-container.loading img {
+            opacity: 0;
+            display: none;
+        }
+
+        .loading-state {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.95);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            border-radius: 8px;
+            z-index: 10;
+        }
+
+        .card-container.loading .loading-state {
+            display: flex;
+        }
+
+        .error-state {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.95);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            border-radius: 8px;
+            z-index: 10;
+        }
+
+        .error-state.visible {
+            display: flex;
+        }
+
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        .loading-text {
+            margin-top: 1rem;
+            font-size: 14px;
+            color: #666;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .retry-button {
+            margin-top: 1rem;
+            padding: 0.5rem 1rem;
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.2s;
+        }
+
+        .retry-button:hover {
+            background: #2980b9;
+        }
+
+        /* Responsive iframe wrapper */
+        .iframe-wrapper {
+            position: relative;
+            width: 100%;
+            padding-top: 56.25%; /* 16:9 Aspect Ratio */
+            margin: 1rem auto;
+            max-width: 900px;
+        }
+
+        .iframe-wrapper iframe {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: none;
+            border-radius: 8px;
+            background: #fff;
+            transition: opacity 0.3s ease;
+        }
+
+        .iframe-wrapper iframe.loading {
+            opacity: 0.5;
+        }
+
+        /* Hide error state by default */
+        .error-state {
+            display: none;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        /* Show error state when visible class is added */
+        .error-state.visible {
+            display: flex;
+            opacity: 1;
+        }
+
+        /* Ensure loading state is properly hidden when not loading */
+        .card-container:not(.loading) .loading-state {
+            display: none;
+            opacity: 0;
+        }
+
+        @media (max-width: 950px) {
+            .demo img {
+                max-width: 100%;
+                height: auto;
+            }
+
+            .demo iframe {
+                min-height: 350px;
+            }
+
+            .iframe-wrapper {
+                padding-top: 75%; /* 4:3 Aspect Ratio for better visibility on mobile */
+            }
+
+            /* Adjust card sizes for better mobile viewing */
+            img[src*="/profile"] {
+                max-width: 450px;
+            }
+
+            img[src*="/graph"] {
+                max-width: 600px;
+            }
+
+            img[src*="/heatmap"] {
+                max-width: 500px;
+            }
+        }
+
+        @media (max-width: 600px) {
+            .demo iframe {
+                min-height: 300px;
+            }
+
+            .iframe-wrapper {
+                padding-top: 100%; /* 1:1 Aspect Ratio for very small screens */
+            }
+
+            /* Further reduce card sizes for very small screens */
+            img[src*="/profile"],
+            img[src*="/graph"],
+            img[src*="/heatmap"] {
+                max-width: 100%;
+            }
+        }
+
+        .attribution {
+            background: #ebf8ff;
+            border-left: 4px solid #4299e1;
+            padding: 1rem;
+            margin: 1rem 0;
+            border-radius: 0 8px 8px 0;
+            font-size: 0.9rem;
+            color: #2d3748;
+        }
+
+        .attribution a {
+            color: #4299e1;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .attribution a:hover {
+            text-decoration: underline;
+        }
+
+        /* Specific card size constraints */
+        img[src*="/profile"] {
+            max-width: 500px;
+            width: 100%;
+        }
+
+        img[src*="/graph"] {
+            max-width: 900px;
+            width: 100%;
+        }
+
+        img[src*="/heatmap"] {
+            max-width: 700px;
+            width: 100%;
+        }
+
+        /* Card container specific sizes */
+        #cf-profile-container,
+        #cc-profile-container {
+            max-width: 500px;
+        }
+
+        #cf-graph-container,
+        #cc-graph-container {
+            max-width: 900px;
+        }
+
+        #cf-heatmap-container,
+        #cc-heatmap-container {
+            max-width: 700px;
+        }
+
+        @media (max-width: 950px) {
+            .demo img {
+                max-width: 100%;
+                height: auto;
+            }
+
+            img[src*="/profile"] {
+                max-width: 450px;
+            }
+
+            img[src*="/graph"] {
+                max-width: 600px;
+            }
+
+            img[src*="/heatmap"] {
+                max-width: 500px;
+            }
+        }
+
+        @media (max-width: 600px) {
+            img[src*="/profile"],
+            img[src*="/graph"],
+            img[src*="/heatmap"] {
+                max-width: 100%;
+            }
+
+            .card-container {
+                margin: 1rem -1rem;
+                border-radius: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- GitHub Corner -->
+    <a href="https://github.com/yourusername/Codeforces-Profile-Card" class="github-corner" aria-label="View source on GitHub">
+        <svg width="80" height="80" viewBox="0 0 250 250" style="fill:#151513; color:#fff; position: absolute; top: 0; border: 0; right: 0;" aria-hidden="true">
+            <path d="M0,0 L115,115 L130,115 L142,142 L250,250 L250,0 Z"></path>
+            <path d="M128.3,109.0 C113.8,99.7 119.0,89.6 119.0,89.6 C122.0,82.7 120.5,78.6 120.5,78.6 C119.2,72.0 123.4,76.3 123.4,76.3 C127.3,80.9 125.5,87.3 125.5,87.3 C122.9,97.6 130.6,101.9 134.4,103.2" fill="currentColor" style="transform-origin: 130px 106px;" class="octo-arm"></path>
+            <path d="M115.0,115.0 C114.9,115.1 118.7,116.5 119.8,115.4 L133.7,101.6 C136.9,99.2 139.9,98.4 142.2,98.6 C133.8,88.0 127.5,74.4 143.8,58.0 C148.5,53.4 154.0,51.2 159.7,51.0 C160.3,49.4 163.2,43.6 171.4,40.1 C171.4,40.1 176.1,42.5 178.8,56.2 C183.1,58.6 187.2,61.8 190.9,65.4 C194.5,69.0 197.7,73.2 200.1,77.6 C213.8,80.2 216.3,84.9 216.3,84.9 C212.7,93.1 206.9,96.0 205.4,96.6 C205.1,102.4 203.0,107.8 198.3,112.5 C181.9,128.9 168.3,122.5 157.7,114.1 C157.9,116.9 156.7,120.9 152.7,124.9 L141.0,136.5 C139.8,137.7 141.6,141.9 141.8,141.8 Z" fill="currentColor" class="octo-body"></path>
+        </svg>
+    </a>
+
+    <div class="container">
+        <h1>Competitive Programming Profile Cards API</h1>
+        <p>Generate beautiful SVG profile cards, rating graphs, and activity heatmaps for competitive programming platforms.</p>
+        
+        <div class="features">
+            <div class="feature">
+                <h3>🎯 Dynamic SVG Generation</h3>
+                <p>Real-time SVG cards generated from the latest user data</p>
+            </div>
+            <div class="feature">
+                <h3>🔄 Auto-updating</h3>
+                <p>Cards automatically update with fresh data every 5 minutes</p>
+            </div>
+            <div class="feature">
+                <h3>🎨 Beautiful Design</h3>
+                <p>Modern, clean design matching platform color schemes</p>
+            </div>
+        </div>
+
+        <h2>Codeforces Cards</h2>
+        <div class="platform">
+            <div class="demo-controls">
+                <input type="text" id="cf-handle" placeholder="Enter Codeforces handle" value="tourist">
+                <button onclick="updateCodeforcesCards()">Generate Cards</button>
+                <div class="preset-handles">
+                    <span class="preset-handle" onclick="setCodeforcesHandle('tourist')">tourist</span>
+                    <span class="preset-handle" onclick="setCodeforcesHandle('Benq')">Benq</span>
+                    <span class="preset-handle" onclick="setCodeforcesHandle('Um_nik')">Um_nik</span>
+                    <span class="preset-handle" onclick="setCodeforcesHandle('ecnerwala')">ecnerwala</span>
+                </div>
+            </div>
+            <div id="cf-error" class="error-message"></div>
+
+            <h3>Profile Card</h3>
+            <div class="endpoint">GET /card/cf/{handle}/profile</div>
+            <div class="demo">
+                <div class="card-container" id="cf-profile-container">
+                    <div class="loading-state">
+                        <div class="loading-spinner"></div>
+                        <div class="loading-text">Loading profile...</div>
+                    </div>
+                    <div class="error-state" id="cf-profile-error">
+                        <div class="error-icon">⚠️</div>
+                        <div class="error-text">Failed to load profile</div>
+                        <button class="retry-button" onclick="retryCodeforces('profile')">Retry</button>
+                    </div>
+                    <img id="cf-profile" src="/card/cf/tourist/profile" alt="Codeforces Profile Card Demo" />
+                </div>
+            </div>
+
+            <h3>Rating Graph</h3>
+            <div class="endpoint">GET /card/cf/{handle}/graph</div>
+            <div class="demo">
+                <div class="card-container" id="cf-graph-container">
+                    <div class="loading-state">
+                        <div class="loading-spinner"></div>
+                        <div class="loading-text">Loading rating graph...</div>
+                    </div>
+                    <div class="error-state" id="cf-graph-error">
+                        <div class="error-icon">⚠️</div>
+                        <div class="error-text">Failed to load rating graph</div>
+                        <button class="retry-button" onclick="retryCodeforces('graph')">Retry</button>
+                    </div>
+                    <img id="cf-graph" src="/card/cf/tourist/graph" alt="Codeforces Rating Graph Demo" />
+                </div>
+            </div>
+
+            <h3>Activity Heatmap</h3>
+            <div class="endpoint">GET /card/cf/{handle}/heatmap</div>
+            <div class="demo">
+                <div class="card-container" id="cf-heatmap-container">
+                    <div class="loading-state">
+                        <div class="loading-spinner"></div>
+                        <div class="loading-text">Loading heatmap...</div>
+                    </div>
+                    <div class="error-state" id="cf-heatmap-error">
+                        <div class="error-icon">⚠️</div>
+                        <div class="error-text">Failed to load heatmap</div>
+                        <button class="retry-button" onclick="retryCodeforces('heatmap')">Retry</button>
+                    </div>
+                    <img id="cf-heatmap" src="/card/cf/tourist/heatmap" alt="Codeforces Heatmap Demo" />
+                </div>
+            </div>
+        </div>
+
+        <h2>CodeChef Cards</h2>
+        <div class="platform">
+            <div class="attribution">
+                <strong>Note:</strong> The CodeChef rating graph and heatmap data are powered by the <a href="https://codechef.com" target="_blank" rel="noopener noreferrer">CodeChef</a> platform. All rights for the data belong to CodeChef. This is an unofficial integration that visualizes publicly available data.
+            </div>
+
+            <div class="demo-controls">
+                <input type="text" id="cc-handle" placeholder="Enter CodeChef handle" value="gennady.korotkevich">
+                <button onclick="updateCodechefCards()">Generate Cards</button>
+                <div class="preset-handles">
+                    <span class="preset-handle" onclick="setCodechefHandle('gennady.korotkevich')">gennady.korotkevich</span>
+                    <span class="preset-handle" onclick="setCodechefHandle('tourist')">tourist</span>
+                    <span class="preset-handle" onclick="setCodechefHandle('uwi')">uwi</span>
+                    <span class="preset-handle" onclick="setCodechefHandle('rainboy')">rainboy</span>
+                </div>
+            </div>
+            <div id="cc-error" class="error-message"></div>
+
+            <h3>Profile Card</h3>
+            <div class="endpoint">GET /card/cc/{handle}/profile</div>
+            <div class="demo">
+                <div class="card-container" id="cc-profile-container">
+                    <div class="loading-state">
+                        <div class="loading-spinner"></div>
+                        <div class="loading-text">Loading profile...</div>
+                    </div>
+                    <div class="error-state" id="cc-profile-error">
+                        <div class="error-icon">⚠️</div>
+                        <div class="error-text">Failed to load profile</div>
+                        <button class="retry-button" onclick="retryCodechef('profile')">Retry</button>
+                    </div>
+                    <img id="cc-profile" src="/card/cc/gennady.korotkevich/profile" alt="CodeChef Profile Card Demo" />
+                </div>
+            </div>
+
+            <h3>Rating Graph</h3>
+            <div class="endpoint">GET /card/cc/{handle}/graph</div>
+            <div class="demo">
+                <div class="card-container" id="cc-graph-container">
+                    <div class="loading-state">
+                        <div class="loading-spinner"></div>
+                        <div class="loading-text">Loading rating graph...</div>
+                    </div>
+                    <div class="error-state" id="cc-graph-error">
+                        <div class="error-icon">⚠️</div>
+                        <div class="error-text">Failed to load rating graph</div>
+                        <button class="retry-button" onclick="retryCodechef('graph')">Retry</button>
+                    </div>
+                    <div class="iframe-wrapper">
+                        <iframe id="cc-graph" 
+                                src="https://codechef-api.vercel.app/rating/gennady.korotkevich"
+                                title="CodeChef Rating Graph" 
+                                loading="lazy"
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                allowfullscreen></iframe>
+                    </div>
+                </div>
+            </div>
+
+            <h3>Activity Heatmap</h3>
+            <div class="endpoint">GET /card/cc/{handle}/heatmap</div>
+            <div class="demo">
+                <div class="card-container" id="cc-heatmap-container">
+                    <div class="loading-state">
+                        <div class="loading-spinner"></div>
+                        <div class="loading-text">Loading heatmap...</div>
+                    </div>
+                    <div class="error-state" id="cc-heatmap-error">
+                        <div class="error-icon">⚠️</div>
+                        <div class="error-text">Failed to load heatmap</div>
+                        <button class="retry-button" onclick="retryCodechef('heatmap')">Retry</button>
+                    </div>
+                    <div class="iframe-wrapper">
+                        <iframe id="cc-heatmap" 
+                                src="https://codechef-api.vercel.app/heatmap/gennady.korotkevich"
+                                title="CodeChef Heatmap" 
+                                loading="lazy"
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                allowfullscreen></iframe>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <h2>Usage</h2>
+        <p>To use these cards in your GitHub README or website, simply use the URL as the source of an image:</p>
+        <div class="endpoint">
+            &lt;img src="https://your-domain.com/card/cf/your-handle/profile" alt="Codeforces Profile" /&gt;
+        </div>
+
+        <div class="note">
+            <strong>Note:</strong> Replace <code>your-handle</code> with your actual Codeforces or CodeChef handle.
+        </div>
+
+        <h2>Features</h2>
+        <ul style="margin-left: 2rem;">
+            <li>Real-time data from Codeforces and CodeChef APIs</li>
+            <li>Responsive SVG cards that look great at any size</li>
+            <li>Automatic color theming based on user rank</li>
+            <li>Detailed statistics including ratings, ranks, and problem counts</li>
+            <li>Interactive rating graphs with tooltips</li>
+            <li>Activity heatmaps showing submission patterns</li>
+        </ul>
+
+        <h2>Rate Limits</h2>
+        <p>To ensure service stability, please respect the following rate limits:</p>
+        <ul style="margin-left: 2rem;">
+            <li>Maximum 100 requests per minute per IP</li>
+            <li>Cards are cached for 5 minutes to reduce API load</li>
+        </ul>
+
+        <div style="margin-top: 3rem; text-align: center; color: #718096;">
+            <p>Made with ❤️ for the competitive programming community</p>
+        </div>
+    </div>
+
+    <script>
+        function setLoading(platform, type, isLoading) {
+            const container = document.getElementById(`${platform}-${type}-container`);
+            if (container) {
+                container.classList.toggle('loading', isLoading);
+                // Show/hide the image based on loading state
+                const img = document.getElementById(`${platform}-${type}`);
+                if (img) {
+                    img.style.display = isLoading ? 'none' : 'block';
+                }
+            }
+        }
+
+        function showError(platform, type) {
+            const errorState = document.getElementById(`${platform}-${type}-error`);
+            if (errorState) {
+                errorState.classList.add('visible');
+            }
+            // Hide the image when showing error
+            const img = document.getElementById(`${platform}-${type}`);
+            if (img) {
+                img.style.display = 'none';
+            }
+        }
+
+        function hideError(platform, type) {
+            const errorState = document.getElementById(`${platform}-${type}-error`);
+            if (errorState) {
+                errorState.classList.remove('visible');
+            }
+        }
+
+        async function updateCodeforcesImage(type, handle) {
+            return new Promise((resolve, reject) => {
+                setLoading('cf', type, true);
+                hideError('cf', type);
+                
+                const img = document.getElementById(`cf-${type}`);
+                const newSrc = `/card/cf/${handle}/${type}?_=${Date.now()}`; // Add cache buster
+                
+                const tempImg = new Image();
+                let loadTimeout = setTimeout(() => {
+                    setLoading('cf', type, false);
+                    showError('cf', type);
+                    reject(new Error(`Timeout loading ${type}`));
+                }, 15000);
+
+                tempImg.onload = () => {
+                    clearTimeout(loadTimeout);
+                    img.src = newSrc;
+                    img.style.display = 'block'; // Ensure image is visible
+                    setLoading('cf', type, false);
+                    hideError('cf', type);
+                    resolve();
+                };
+                
+                tempImg.onerror = () => {
+                    clearTimeout(loadTimeout);
+                    setLoading('cf', type, false);
+                    showError('cf', type);
+                    reject(new Error(`Failed to load ${type}`));
+                };
+                
+                tempImg.src = newSrc;
+            });
+        }
+
+        async function updateCodechefImage(type, handle) {
+            return new Promise((resolve, reject) => {
+                setLoading('cc', type, true);
+                hideError('cc', type);
+                
+                if (type === 'profile') {
+                    const img = document.getElementById('cc-profile');
+                    const newSrc = `/card/cc/${handle}/profile?_=${Date.now()}`; // Add cache buster
+                    
+                    const tempImg = new Image();
+                    let loadTimeout = setTimeout(() => {
+                        setLoading('cc', type, false);
+                        showError('cc', type);
+                        reject(new Error('Timeout loading profile'));
+                    }, 15000);
+
+                    tempImg.onload = () => {
+                        clearTimeout(loadTimeout);
+                        img.src = newSrc;
+                        img.style.display = 'block'; // Ensure image is visible
+                        setLoading('cc', type, false);
+                        hideError('cc', type);
+                        resolve();
+                    };
+                    
+                    tempImg.onerror = () => {
+                        clearTimeout(loadTimeout);
+                        setLoading('cc', type, false);
+                        showError('cc', type);
+                        reject(new Error('Failed to load profile'));
+                    };
+                    
+                    tempImg.src = newSrc;
+                } else {
+                    const iframe = document.getElementById(`cc-${type}`);
+                    const newSrc = `https://codechef-api.vercel.app/${type === 'graph' ? 'rating' : 'heatmap'}/${handle}?_=${Date.now()}`; // Add cache buster
+                    
+                    hideError('cc', type);
+                    
+                    let loadTimeout = setTimeout(() => {
+                        setLoading('cc', type, false);
+                        showError('cc', type);
+                        reject(new Error(`Timeout loading ${type}`));
+                    }, 15000);
+
+                    iframe.onload = () => {
+                        clearTimeout(loadTimeout);
+                        setLoading('cc', type, false);
+                        hideError('cc', type);
+                        iframe.classList.remove('loading');
+                        resolve();
+                    };
+
+                    iframe.onerror = () => {
+                        clearTimeout(loadTimeout);
+                        setLoading('cc', type, false);
+                        showError('cc', type);
+                        reject(new Error(`Failed to load ${type}`));
+                    };
+
+                    iframe.classList.add('loading');
+                    iframe.src = newSrc;
+                }
+            });
+        }
+
+        async function updateCodeforcesCards() {
+            const handle = document.getElementById('cf-handle').value.trim();
+            if (!handle) {
+                document.getElementById('cf-error').textContent = 'Please enter a handle';
+                return;
+            }
+
+            document.getElementById('cf-error').textContent = '';
+            
+            try {
+                // Update all cards in sequence to ensure proper loading
+                await updateCodeforcesImage('profile', handle);
+                await updateCodeforcesImage('graph', handle);
+                // Add a small delay before loading heatmap to ensure proper rendering
+                setTimeout(async () => {
+                    try {
+                        await updateCodeforcesImage('heatmap', handle);
+                    } catch (error) {
+                        document.getElementById('cf-error').textContent = 'Failed to load heatmap. Please try again.';
+                    }
+                }, 500);
+            } catch (error) {
+                document.getElementById('cf-error').textContent = 'Failed to load some cards. Please try again.';
+            }
+        }
+
+        async function updateCodechefCards() {
+            const handle = document.getElementById('cc-handle').value.trim();
+            if (!handle) {
+                document.getElementById('cc-error').textContent = 'Please enter a handle';
+                return;
+            }
+
+            document.getElementById('cc-error').textContent = '';
+            
+            try {
+                // Update all cards in sequence to ensure proper loading
+                await updateCodechefImage('profile', handle);
+                await updateCodechefImage('graph', handle);
+                // Add a small delay before loading heatmap to ensure proper rendering
+                setTimeout(async () => {
+                    try {
+                        await updateCodechefImage('heatmap', handle);
+                    } catch (error) {
+                        document.getElementById('cc-error').textContent = 'Failed to load heatmap. Please try again.';
+                    }
+                }, 500);
+            } catch (error) {
+                document.getElementById('cc-error').textContent = 'Failed to load some cards. Please try again.';
+            }
+        }
+
+        function setCodeforcesHandle(handle) {
+            document.getElementById('cf-handle').value = handle;
+            updateCodeforcesCards();
+        }
+
+        function setCodechefHandle(handle) {
+            document.getElementById('cc-handle').value = handle;
+            updateCodechefCards();
+        }
+
+        // Remove input event listeners to prevent automatic API calls
+        document.getElementById('cf-handle').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                updateCodeforcesCards();
+            }
+        });
+
+        document.getElementById('cc-handle').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                updateCodechefCards();
+            }
+        });
+
+        function retryCodeforces(type) {
+            const handle = document.getElementById('cf-handle').value.trim();
+            if (handle) {
+                updateCodeforcesImage(type, handle).catch(error => {
+                    console.error(`Error retrying Codeforces ${type}:`, error);
+                });
+            }
+        }
+
+        function retryCodechef(type) {
+            const handle = document.getElementById('cc-handle').value.trim();
+            if (handle) {
+                updateCodechefImage(type, handle).catch(error => {
+                    console.error(`Error retrying CodeChef ${type}:`, error);
+                });
+            }
+        }
+
+        // Initial load
+        document.addEventListener('DOMContentLoaded', () => {
+            const defaultCFHandle = document.getElementById('cf-handle').value.trim();
+            const defaultCCHandle = document.getElementById('cc-handle').value.trim();
+
+            if (defaultCFHandle) {
+                updateCodeforcesCards();
+            }
+
+            if (defaultCCHandle) {
+                updateCodechefCards();
+            }
+        });
+    </script>
+</body>
+</html> 

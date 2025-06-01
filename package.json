@@ -1,0 +1,40 @@
+{
+  "name": "competitive-programming-profile-cards",
+  "version": "1.0.0",
+  "description": "Generate beautiful SVG profile cards for competitive programming platforms",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "codeforces",
+    "codechef",
+    "competitive-programming",
+    "profile-cards",
+    "svg",
+    "api"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.6.7",
+    "dotenv": "^16.4.5",
+    "express": "^4.18.3"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.0"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yourusername/Codeforces-Profile-Card.git"
+  },
+  "bugs": {
+    "url": "https://github.com/yourusername/Codeforces-Profile-Card/issues"
+  },
+  "homepage": "https://github.com/yourusername/Codeforces-Profile-Card#readme"
+}
