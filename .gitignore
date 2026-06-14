@@ -1,4 +1,6 @@
 .vercel
-node_module
+node_modules
 .env
 test.html
+package-lock.json
+.DS_Store
