@@ -2,7 +2,7 @@
 
 Generate beautiful SVG profile cards, rating graphs, and activity heatmaps for competitive programming platforms. Currently supports Codeforces and CodeChef.
 
-![Codeforces Profile Card Demo](https://cp-card-4ik8dr0rg-rajrishi-06s-projects.vercel.app/card/cf/tourist/profile)
+![Codeforces Profile Card Demo](https://cp-card.vercel.app/card/cf/tourist/profile)
 
 ## Features ✨
 
@@ -57,25 +57,25 @@ GET /card/cc/{handle}/heatmap
 ### In GitHub README
 
 ```markdown
-![Codeforces Profile](https://cp-card-4ik8dr0rg-rajrishi-06s-projects.vercel.app/card/cf/your-handle/profile)
-![Codeforces Graph](https://cp-card-4ik8dr0rg-rajrishi-06s-projects.vercel.app/card/cf/your-handle/graph)
-![Codeforces Heatmap](https://cp-card-4ik8dr0rg-rajrishi-06s-projects.vercel.app/card/cf/your-handle/heatmap)
+![Codeforces Profile](https://cp-card.vercel.app/card/cf/your-handle/profile)
+![Codeforces Graph](https://cp-card.vercel.app/card/cf/your-handle/graph)
+![Codeforces Heatmap](https://cp-card.vercel.app/card/cf/your-handle/heatmap)
 ```
 
 ### In HTML
 
 ```html
-<img src="https://cp-card-4ik8dr0rg-rajrishi-06s-projects.vercel.app/card/cf/your-handle/profile" alt="Codeforces Profile">
-<img src="https://cp-card-4ik8dr0rg-rajrishi-06s-projects.vercel.app/card/cf/your-handle/graph" alt="Codeforces Graph">
-<img src="https://cp-card-4ik8dr0rg-rajrishi-06s-projects.vercel.app/card/cf/your-handle/heatmap" alt="Codeforces Heatmap">
+<img src="https://cp-card.vercel.app/card/cf/your-handle/profile" alt="Codeforces Profile">
+<img src="https://cp-card.vercel.app/card/cf/your-handle/graph" alt="Codeforces Graph">
+<img src="https://cp-card.vercel.app/card/cf/your-handle/heatmap" alt="Codeforces Heatmap">
 ```
 
 ## Setup 🚀
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/Codeforces-Profile-Card.git
-cd Codeforces-Profile-Card
+git clone https://github.com/rajrishi-06/Cp-Card.git
+cd Cp-Card
 ```
 
 2. Install dependencies:
@@ -83,12 +83,19 @@ cd Codeforces-Profile-Card
 npm install
 ```
 
-3. Create a `.env` file with your Codeforces API credentials:
+3. Create a `.env` file with your Codeforces API credentials (see `.env.example`):
 ```env
 API_KEY=your_codeforces_api_key
 API_SECRET=your_codeforces_api_secret
 PORT=3000
+
+# Optional: add more Codeforces key pairs for higher throughput / failover
+# API_KEY_2=second_codeforces_api_key
+# API_SECRET_2=second_codeforces_api_secret
 ```
+
+> CodeChef cards require no credentials — they are crawled from the public
+> profile page.
 
 4. Start the server:
 ```bash
@@ -99,9 +106,15 @@ The server will start at `http://localhost:3000`
 
 ## Environment Variables 🔑
 
-- `API_KEY`: Your Codeforces API key
-- `API_SECRET`: Your Codeforces API secret
+- `API_KEY` / `API_SECRET`: Your primary Codeforces API key pair
+- `API_KEY_2` / `API_SECRET_2` … up to `_10`: Additional key pairs. The Codeforces
+  module rotates across all configured pairs and fails over to the next one when
+  a pair hits the call limit.
+- `CF_CREDENTIALS`: Optional JSON list of pairs, e.g.
+  `[{"key":"k1","secret":"s1"},{"key":"k2","secret":"s2"}]`
 - `PORT`: Server port (default: 3000)
+
+CodeChef requires no API credentials.
 
 ## Rate Limits 🚦
 

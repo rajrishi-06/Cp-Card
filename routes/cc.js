@@ -1,106 +1,60 @@
+// routes/cc.js
+// CodeChef profile / graph / heatmap SVG cards.
+// Data is crawled from the public CodeChef profile page (see utils/codechef.js);
+// this file only renders the SVGs. All three card types are generated locally
+// now, so there is no longer any dependency on the deprecated third-party API.
 const express = require('express');
-const axios = require('axios');
 const router = express.Router();
-const { escapeXml, getImageAsBase64, errorSVG } = require('../utils/helpers');
+const { getCodechefData } = require('../utils/codechef');
+const {
+    escapeXml,
+    getImageAsBase64,
+    errorSVG,
+    isValidHandle,
+    longestStreak,
+    PLACEHOLDER_AVATAR,
+    PLACEHOLDER_FLAG
+} = require('../utils/helpers');
+const { MONTH_NAMES, ccStarColor } = require('../utils/constants');
+const { buildHeatmapSVG } = require('../utils/heatmap');
 
-const codechefCache = new Map();
-const CACHE_DURATION = 5 * 60 * 1000;
+const CACHE_CONTROL = 'public, max-age=300, s-maxage=1800, stale-while-revalidate=86400';
 
 async function getCodechefProfileImages(data) {
-    const images = {
-        profile: null,
-        countryFlag: null
-    };
-    
+    const images = { profile: PLACEHOLDER_AVATAR, countryFlag: PLACEHOLDER_FLAG };
     try {
-        if (data.profile) {
-            images.profile = await getImageAsBase64(data.profile);
-        }
-        if (data.countryFlag) {
-            images.countryFlag = await getImageAsBase64(data.countryFlag);
-        }
+        if (data.profile) images.profile = await getImageAsBase64(data.profile);
+        if (data.countryFlag) images.countryFlag = await getImageAsBase64(data.countryFlag);
     } catch (error) {
-        console.error('Error fetching Codechef images:', error);
+        // getImageAsBase64 already falls back to a placeholder; nothing to do.
     }
-    
-    // Default images if fetching fails
-    if (!images.profile) {
-        images.profile = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiB2aWV3Qm94PSIwIDAgMTAwIDEwMCI+PHJlY3Qgd2lkdGg9IjEwMCIgaGVpZ2h0PSIxMDAiIGZpbGw9IiNlZWUiLz48dGV4dCB4PSI1MCIgeT0iNTAiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzY2NiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPk5vIEltYWdlPC90ZXh0Pjwvc3ZnPg==';
-    }
-    if (!images.countryFlag) {
-        images.countryFlag = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMCIgaGVpZ2h0PSIyMCIgdmlld0JveD0iMCAwIDIwIDIwIj48cmVjdCB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIGZpbGw9IiNlZWUiLz48L3N2Zz4=';
-    }
-    
     return images;
-}
-
-async function getCodechefData(handle) {
-    const cacheKey = `codechef_${handle}`;
-    if (codechefCache.has(cacheKey)) {
-        const { data, timestamp } = codechefCache.get(cacheKey);
-        if (Date.now() - timestamp < CACHE_DURATION) {
-            return data;
-        }
-    }
-
-    try {
-        const response = await axios.get(`https://codechef-api.vercel.app/handle/${handle}`);
-        
-        if (response.data) {
-            const totalSolved = response.data.heatMap ? 
-                response.data.heatMap.reduce((sum, day) => sum + day.value, 0) : 0;
-
-            const data = {
-                ...response.data,
-                totalSolved
-            };
-
-            codechefCache.set(cacheKey, {
-                data,
-                timestamp: Date.now()
-            });
-            return data;
-        }
-        throw new Error('No data received from Codechef API');
-    } catch (error) {
-        throw new Error('Failed to fetch Codechef data');
-    }
 }
 
 async function generateCodechefProfileSVG(data) {
     try {
-        const { 
-            name, 
-            currentRating, 
-            highestRating, 
-            countryFlag, 
-            countryName, 
-            globalRank, 
-            countryRank, 
-            stars, 
-            profile,
+        const {
+            name,
+            currentRating,
+            highestRating,
+            countryFlag,
+            countryName,
+            globalRank,
+            countryRank,
+            stars,
             institution,
-            totalSolved = 0
+            totalSolved = 0,
+            ratingData
         } = data;
 
-        // Get base64 encoded images
         const images = await getCodechefProfileImages(data);
+        const starColor = ccStarColor(stars);
+        const lastContest = Array.isArray(ratingData) && ratingData.length > 0
+            ? ratingData[ratingData.length - 1]
+            : null;
 
-        // Color mapping for stars
-        const starColors = {
-            '1★': '#666666',
-            '2★': '#1E7D22',
-            '3★': '#3366CC',
-            '4★': '#684273',
-            '5★': '#FFBF00',
-            '6★': '#FF7F00',
-            '7★': '#D0011B'
-        };
-
-        const starColor = starColors[stars] || '#666666';
-        
         return `<?xml version="1.0" encoding="UTF-8" standalone="no"?>
-        <svg width="500" height="300" style="border-radius:15px; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);" 
+        <svg width="500" height="300" style="border-radius:15px; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);"
              xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
             <style>
                 @import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&amp;display=swap');
@@ -118,18 +72,25 @@ async function generateCodechefProfileSVG(data) {
                     <stop offset="0%" style="stop-color:#ffffff;stop-opacity:1" />
                     <stop offset="100%" style="stop-color:#f8f9fa;stop-opacity:1" />
                 </linearGradient>
+                <linearGradient id="headerGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stop-color="${starColor}" stop-opacity="0.22" />
+                    <stop offset="100%" stop-color="${starColor}" stop-opacity="0.06" />
+                </linearGradient>
+                <filter id="cardShadow" x="-10%" y="-10%" width="120%" height="120%">
+                    <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#000" flood-opacity="0.08"/>
+                </filter>
             </defs>
             <rect width="500" height="300" fill="url(#backgroundGrad)"/>
 
             <!-- Decorative Elements -->
-            <rect x="0" y="0" width="500" height="70" fill="${starColor}" opacity="0.1"/>
-            <path d="M0,70 L500,70" stroke="#eee" stroke-width="1"/>
+            <rect x="0" y="0" width="500" height="70" fill="url(#headerGrad)"/>
+            <rect x="0" y="68" width="500" height="2" fill="${starColor}" opacity="0.5"/>
 
             <!-- User Info Section -->
             <g transform="translate(20, 20)">
                 <!-- Stars and Name -->
                 <text class="rank" fill="${starColor}" x="0" y="32">${escapeXml(stars)}</text>
-                <text class="title" fill="${starColor}" x="35" y="32">${escapeXml(name)}</text>
+                <text class="title" fill="${starColor}" x="55" y="32">${escapeXml(name)}</text>
 
                 <!-- Location and Institution -->
                 <g transform="translate(0, 55)">
@@ -146,36 +107,36 @@ async function generateCodechefProfileSVG(data) {
                 <g transform="translate(0, 95)">
                     <!-- First Row -->
                     <g>
-                        <rect x="0" y="0" width="150" height="60" fill="#CCCCCC" rx="8"/>
-                        <text class="stat" x="75" y="25" text-anchor="middle">#${globalRank}</text>
-                        <text class="label" x="75" y="45" text-anchor="middle">Global Rank</text>
+                        <rect x="0" y="0" width="150" height="60" fill="#ffffff" rx="10" stroke="${starColor}" stroke-opacity="0.25" filter="url(#cardShadow)"/>
+                        <text class="stat" fill="${starColor}" x="75" y="26" text-anchor="middle">#${escapeXml(globalRank)}</text>
+                        <text class="label" x="75" y="46" text-anchor="middle">Global Rank</text>
                     </g>
                     <g transform="translate(160, 0)">
-                        <rect x="0" y="0" width="150" height="60" fill="#CCCCCC" rx="8"/>
-                        <text class="stat" x="75" y="25" text-anchor="middle">#${countryRank}</text>
-                        <text class="label" x="75" y="45" text-anchor="middle">Country Rank</text>
+                        <rect x="0" y="0" width="150" height="60" fill="#ffffff" rx="10" stroke="${starColor}" stroke-opacity="0.25" filter="url(#cardShadow)"/>
+                        <text class="stat" fill="${starColor}" x="75" y="26" text-anchor="middle">#${escapeXml(countryRank)}</text>
+                        <text class="label" x="75" y="46" text-anchor="middle">Country Rank</text>
                     </g>
                 </g>
 
                 <!-- Second Row -->
                 <g transform="translate(0, 165)">
                     <g>
-                        <rect x="0" y="0" width="150" height="60" fill="#CCCCCC" rx="8"/>
-                        <text class="stat" x="75" y="25" text-anchor="middle">${currentRating}</text>
-                        <text class="label" x="75" y="45" text-anchor="middle">Current Rating</text>
+                        <rect x="0" y="0" width="150" height="60" fill="#ffffff" rx="10" stroke="${starColor}" stroke-opacity="0.25" filter="url(#cardShadow)"/>
+                        <text class="stat" fill="${starColor}" x="75" y="26" text-anchor="middle">${escapeXml(currentRating)}</text>
+                        <text class="label" x="75" y="46" text-anchor="middle">Current Rating</text>
                     </g>
                     <g transform="translate(160, 0)">
-                        <rect x="0" y="0" width="150" height="60" fill="#CCCCCC" rx="8"/>
-                        <text class="stat" x="75" y="25" text-anchor="middle">${totalSolved}</text>
-                        <text class="label" x="75" y="45" text-anchor="middle">Problems Solved</text>
+                        <rect x="0" y="0" width="150" height="60" fill="#ffffff" rx="10" stroke="${starColor}" stroke-opacity="0.25" filter="url(#cardShadow)"/>
+                        <text class="stat" fill="${starColor}" x="75" y="26" text-anchor="middle">${totalSolved}</text>
+                        <text class="label" x="75" y="46" text-anchor="middle">Problems Solved</text>
                     </g>
                 </g>
 
                 <!-- Last Contest Info -->
-                ${data.ratingData && data.ratingData.length > 0 ? `
+                ${lastContest ? `
                     <g transform="translate(0, 240)">
-                        <text class="info" x="0" y="0">Last Contest: ${escapeXml(data.ratingData[data.ratingData.length - 1].name)}</text>
-                        <text class="stat" x="0" y="20">Rank: #${data.ratingData[data.ratingData.length - 1].rank}</text>
+                        <text class="info" x="0" y="0">Last Contest: ${escapeXml(lastContest.name)}</text>
+                        <text class="stat" x="0" y="20">Rank: #${escapeXml(String(lastContest.rank))}</text>
                     </g>
                 ` : ''}
             </g>
@@ -190,14 +151,14 @@ async function generateCodechefProfileSVG(data) {
                 <circle cx="430" cy="70" r="50"/>
             </clipPath>
             <circle cx="430" cy="70" r="50" fill="#fff" filter="url(#shadow)"/>
-            <image x="380" y="20" width="100" height="100" href="${images.profile}" 
+            <image x="380" y="20" width="100" height="100" href="${images.profile}"
                    clip-path="url(#circleClip)" preserveAspectRatio="xMidYMid slice"/>
             <circle cx="430" cy="70" r="50" fill="none" stroke="${starColor}" stroke-width="2"/>
 
             <!-- Max Rating Badge -->
             <g transform="translate(380, 130)">
-                <rect x="0" y="0" width="100" height="30" fill="#f8f9fa" rx="15"/>
-                <text class="small-stat" x="50" y="19" text-anchor="middle">max. ${highestRating}</text>
+                <rect x="0" y="0" width="100" height="30" fill="#ffffff" rx="15" stroke="${starColor}" stroke-opacity="0.3" filter="url(#cardShadow)"/>
+                <text class="small-stat" fill="${starColor}" x="50" y="19" text-anchor="middle">max. ${escapeXml(highestRating)}</text>
             </g>
         </svg>`;
     } catch (error) {
@@ -205,79 +166,135 @@ async function generateCodechefProfileSVG(data) {
     }
 }
 
+// CodeChef rating divisions -> band colour (mirrors the coloured background
+// bands CodeChef draws behind its Highcharts rating graph).
+const CC_RATING_BANDS = [
+    { from: 0,    to: 1400,  color: '#999999' },
+    { from: 1400, to: 1600,  color: '#1E7D22' },
+    { from: 1600, to: 1800,  color: '#3366CC' },
+    { from: 1800, to: 2000,  color: '#684273' },
+    { from: 2000, to: 2200,  color: '#FFBF00' },
+    { from: 2200, to: 2500,  color: '#FF7F00' },
+    { from: 2500, to: 10000, color: '#D0011B' }
+];
+
 function generateCodechefGraphSVG(data) {
     try {
-        const { ratingData } = data;
-        if (!ratingData || ratingData.length === 0) {
+        const ratingData = Array.isArray(data.ratingData) ? data.ratingData : [];
+        if (ratingData.length === 0) {
             return errorSVG('No rating data available');
         }
 
-        // Sort rating data by date
-        const sortedRatings = ratingData.sort((a, b) => new Date(a.date) - new Date(b.date));
-        
-        // Calculate dimensions and scales
+        // Sort by date without mutating the cached array.
+        const sortedRatings = [...ratingData].sort((a, b) => new Date(a.date) - new Date(b.date));
+
         const width = 900;
         const height = 420;
-        const padding = { top: 40, right: 30, bottom: 60, left: 50 };
-        
-        // Calculate min and max values
-        const minRating = Math.min(...sortedRatings.map(r => r.rating));
-        const maxRating = Math.max(...sortedRatings.map(r => r.rating));
-        const startDate = new Date(sortedRatings[0].date);
-        const endDate = new Date(sortedRatings[sortedRatings.length - 1].date);
-        
-        // Generate path for rating curve
-        const graphWidth = width - padding.left - padding.right;
-        const graphHeight = height - padding.top - padding.bottom;
-        
-        const points = sortedRatings.map((r, i) => {
-            const x = padding.left + (i / (sortedRatings.length - 1)) * graphWidth;
-            const y = height - padding.bottom - ((r.rating - minRating) / (maxRating - minRating)) * graphHeight;
-            return `${i === 0 ? 'M' : 'L'} ${x},${y}`;
-        }).join(' ');
+        const padding = { top: 55, right: 40, bottom: 55, left: 60 };
+        const plotLeft = padding.left;
+        const plotRight = width - padding.right;
+        const plotTop = padding.top;
+        const plotBottom = height - padding.bottom;
+        const graphWidth = plotRight - plotLeft;
+        const graphHeight = plotBottom - plotTop;
+
+        const ratings = sortedRatings.map(r => r.rating);
+        const dataMin = Math.min(...ratings);
+        const dataMax = Math.max(...ratings);
+        // Pad to the nearest 100 so the curve doesn't touch the edges, and keep a
+        // sensible minimum span for flat histories.
+        let yMin = Math.floor((dataMin - 100) / 100) * 100;
+        let yMax = Math.ceil((dataMax + 100) / 100) * 100;
+        if (yMax - yMin < 200) yMax = yMin + 200;
+        const ySpan = yMax - yMin;
+        const denom = (sortedRatings.length - 1) || 1;
+
+        const xFor = i => plotLeft + (i / denom) * graphWidth;
+        const yFor = rating => plotTop + ((yMax - rating) / ySpan) * graphHeight;
+
+        const lineColor = ccStarColor(data.stars);
+
+        // Background rating bands clipped to the visible y-range.
+        const bands = CC_RATING_BANDS.map(b => {
+            const top = Math.min(b.to, yMax);
+            const bottom = Math.max(b.from, yMin);
+            if (bottom >= top) return '';
+            const y = yFor(top);
+            const h = yFor(bottom) - y;
+            return `<rect x="${plotLeft}" y="${y}" width="${graphWidth}" height="${h}" fill="${b.color}" opacity="0.12"/>`;
+        }).join('');
+
+        // Horizontal gridlines + y labels at a readable step.
+        const yStep = ySpan <= 600 ? 100 : ySpan <= 1400 ? 200 : 500;
+        let yAxis = '';
+        for (let v = Math.ceil(yMin / yStep) * yStep; v <= yMax; v += yStep) {
+            const y = yFor(v);
+            yAxis += `<line x1="${plotLeft}" y1="${y}" x2="${plotRight}" y2="${y}" stroke="#e2e8f0" stroke-width="1"/>
+                <text x="${plotLeft - 10}" y="${y}" class="label" text-anchor="end" dominant-baseline="middle">${v}</text>`;
+        }
+
+        // X labels (dates), ~7 evenly spaced.
+        const xTick = Math.max(1, Math.round((sortedRatings.length - 1) / 6));
+        let xAxis = '';
+        for (let i = 0; i < sortedRatings.length; i += xTick) {
+            const d = new Date(sortedRatings[i].date);
+            const label = Number.isNaN(d.getTime())
+                ? ''
+                : `${MONTH_NAMES[d.getMonth()]} '${String(d.getFullYear()).slice(2)}`;
+            xAxis += `<text x="${xFor(i)}" y="${plotBottom + 20}" class="label" text-anchor="middle">${label}</text>`;
+        }
+
+        const linePoints = sortedRatings.map((r, i) => `${xFor(i)},${yFor(r.rating)}`);
+        const linePath = `M ${linePoints.join(' L ')}`;
+        const areaPath = `${linePath} L ${xFor(sortedRatings.length - 1)},${plotBottom} L ${xFor(0)},${plotBottom} Z`;
+
+        const dots = sortedRatings.map((r, i) => `
+            <circle cx="${xFor(i)}" cy="${yFor(r.rating)}" r="3.5" fill="${lineColor}" stroke="#ffffff" stroke-width="1.5">
+                <title>${escapeXml(r.name)}: ${r.rating}</title>
+            </circle>
+        `).join('');
+
+        const current = data.currentRating || (ratings.length ? ratings[ratings.length - 1] : '');
+        const highest = data.highestRating || dataMax;
 
         return `<?xml version="1.0" encoding="UTF-8" standalone="no"?>
-        <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" 
-             style="border-radius:15px; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);" 
+        <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"
+             style="border-radius:15px; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);"
              xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
             <style>
-                @import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600&amp;display=swap');
-                .title { font: 600 16px 'Open Sans', sans-serif; }
-                .label { font: 400 12px 'Open Sans', sans-serif; }
+                @import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&amp;display=swap');
+                .title { font: 700 18px 'Open Sans', sans-serif; fill: #2d3748; }
+                .subtitle { font: 600 13px 'Open Sans', sans-serif; }
+                .label { font: 400 11px 'Open Sans', sans-serif; fill: #718096; }
             </style>
-            
+            <defs>
+                <linearGradient id="ccAreaGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stop-color="${lineColor}" stop-opacity="0.35" />
+                    <stop offset="100%" stop-color="${lineColor}" stop-opacity="0.02" />
+                </linearGradient>
+            </defs>
+
             <!-- Background -->
             <rect width="${width}" height="${height}" fill="#ffffff"/>
-            
-            <!-- Rating curve -->
-            <path d="${points}" stroke="#1a0dab" stroke-width="2" fill="none"/>
-            
-            <!-- Dots for each contest -->
-            ${sortedRatings.map((r, i) => {
-                const x = padding.left + (i / (sortedRatings.length - 1)) * graphWidth;
-                const y = height - padding.bottom - ((r.rating - minRating) / (maxRating - minRating)) * graphHeight;
-                return `
-                    <circle cx="${x}" cy="${y}" r="4" fill="#1a0dab"/>
-                    <title>${r.name}: ${r.rating}</title>
-                `;
-            }).join('')}
-            
-            <!-- Axes -->
-            <line x1="${padding.left}" y1="${height - padding.bottom}" 
-                  x2="${width - padding.right}" y2="${height - padding.bottom}" 
-                  stroke="#666" stroke-width="1"/>
-            <line x1="${padding.left}" y1="${padding.top}" 
-                  x2="${padding.left}" y2="${height - padding.bottom}" 
-                  stroke="#666" stroke-width="1"/>
-                  
-            <!-- Labels -->
-            <text x="${width/2}" y="25" class="title" text-anchor="middle">Rating History</text>
-            
-            <!-- Rating labels -->
-            ${generateYAxisLabels(minRating, maxRating, height, padding)}
-            
-            <!-- Date labels -->
-            ${generateXAxisLabels(sortedRatings, width, height, padding)}
+
+            <!-- Rating bands + grid -->
+            ${bands}
+            ${yAxis}
+
+            <!-- Plot border -->
+            <rect x="${plotLeft}" y="${plotTop}" width="${graphWidth}" height="${graphHeight}" fill="none" stroke="#cbd5e0" stroke-width="1"/>
+
+            <!-- Area + line -->
+            <path d="${areaPath}" fill="url(#ccAreaGrad)" stroke="none"/>
+            <path d="${linePath}" fill="none" stroke="${lineColor}" stroke-width="2.5" stroke-linejoin="round"/>
+            ${dots}
+
+            <!-- X labels -->
+            ${xAxis}
+
+            <!-- Header -->
+            <text x="${plotLeft}" y="32" class="title">Rating History</text>
+            <text x="${plotRight}" y="32" class="subtitle" text-anchor="end" fill="${lineColor}">${escapeXml(String(current))} (max. ${escapeXml(String(highest))})</text>
         </svg>`;
     } catch (error) {
         return errorSVG('Unable to generate rating graph');
@@ -286,255 +303,105 @@ function generateCodechefGraphSVG(data) {
 
 function generateCodechefHeatmapSVG(data) {
     try {
-        const { heatMap } = data;
-        if (!heatMap) {
-            return errorSVG('No heatmap data available');
-        }
+        // An empty heatMap still renders a valid (all-empty) grid rather than an
+        // error card, so low-activity users get a heatmap, not a failure.
+        const heatMap = Array.isArray(data.heatMap) ? data.heatMap : [];
 
-        const width = 700;
-        const height = 250;
-        const cellSize = 10;
-        const cellPadding = 2;
-        
-        // Group data by week
-        const weekData = groupHeatmapByWeek(heatMap);
-        
-        return `<?xml version="1.0" encoding="UTF-8" standalone="no"?>
-        <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" 
-             style="border-radius:15px; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);" 
-             xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
-            <style>
-                @import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600&amp;display=swap');
-                text { font-family: 'Open Sans', sans-serif; }
-            </style>
-            
-            <!-- Background -->
-            <rect width="${width}" height="${height}" fill="#ffffff"/>
-            
-            <!-- Heatmap cells -->
-            ${generateHeatmapCells(weekData, cellSize, cellPadding)}
-            
-            <!-- Month labels -->
-            ${generateMonthLabels(weekData)}
-            
-            <!-- Day labels -->
-            ${generateDayLabels()}
-            
-            <!-- Legend -->
-            ${generateHeatmapLegend()}
-        </svg>`;
+        // Map each date to its submission count.
+        const valueByDate = new Map();
+        heatMap.forEach(d => {
+            if (d && d.date) valueByDate.set(d.date.slice(0, 10), Number(d.value) || 0);
+        });
+
+        const now = new Date();
+        const oneYearAgo = new Date(now);
+        oneYearAgo.setFullYear(now.getFullYear() - 1);
+        const oneMonthAgo = new Date(now);
+        oneMonthAgo.setMonth(now.getMonth() - 1);
+
+        // Submission totals over the data we have. Crawler dates are bare
+        // YYYY-MM-DD, treated as UTC calendar days.
+        const sum = (since) => heatMap.reduce((acc, d) => {
+            if (!d || !d.date) return acc;
+            const t = Date.parse(`${d.date.slice(0, 10)}T00:00:00Z`);
+            if (since !== undefined && !(t >= since.getTime())) return acc;
+            return acc + (Number(d.value) || 0);
+        }, 0);
+
+        const totalSubmissions = sum();
+        const lastYearSubmissions = sum(oneYearAgo);
+        const lastMonthSubmissions = sum(oneMonthAgo);
+
+        const activeDays = heatMap
+            .filter(d => d && d.date && (Number(d.value) || 0) > 0)
+            .map(d => d.date.slice(0, 10));
+        const maxStreak = longestStreak(activeDays);
+        const lastYearStreak = longestStreak(activeDays, oneYearAgo.getTime());
+        const lastMonthStreak = longestStreak(activeDays, oneMonthAgo.getTime());
+
+        return buildHeatmapSVG({
+            valueByDate,
+            unit: 'submissions',
+            colorFor: v => v <= 0 ? '#ebedf0' : v <= 2 ? '#9be9a8' : v <= 4 ? '#40c463' : v <= 6 ? '#30a14e' : '#216e39',
+            topStats: [
+                { big: `${totalSubmissions}`, small: 'submissions for all time' },
+                { big: `${lastYearSubmissions}`, small: 'submissions for the last year' },
+                { big: `${lastMonthSubmissions}`, small: 'submissions for the last month' }
+            ],
+            bottomStats: [
+                { big: `${maxStreak} days`, small: 'in a row max.' },
+                { big: `${lastYearStreak} days`, small: 'in a row for the last year' },
+                { big: `${lastMonthStreak} days`, small: 'in a row for the last month' }
+            ]
+        });
     } catch (error) {
         return errorSVG('Unable to generate heatmap');
     }
 }
 
-// Helper functions for graph and heatmap
-function generateYAxisLabels(min, max, height, padding) {
-    const step = Math.ceil((max - min) / 5);
-    let labels = '';
-    for (let i = 0; i <= 5; i++) {
-        const rating = min + (step * i);
-        const y = height - padding.bottom - (i / 5) * (height - padding.top - padding.bottom);
-        labels += `
-            <text x="${padding.left - 10}" y="${y}" class="label" text-anchor="end" dominant-baseline="middle">
-                ${rating}
-            </text>
-        `;
-    }
-    return labels;
+// --- Routes -------------------------------------------------------------------
+function sendSvg(res, svg, status = 200) {
+    res.setHeader('Content-Type', 'image/svg+xml');
+    res.setHeader('Cache-Control', CACHE_CONTROL);
+    res.status(status).send(svg);
 }
 
-function generateXAxisLabels(ratings, width, height, padding) {
-    const step = Math.ceil(ratings.length / 6);
-    let labels = '';
-    for (let i = 0; i < ratings.length; i += step) {
-        const x = padding.left + (i / (ratings.length - 1)) * (width - padding.left - padding.right);
-        const date = new Date(ratings[i].date);
-        labels += `
-            <text x="${x}" y="${height - padding.bottom + 20}" class="label" text-anchor="middle">
-                ${date.toLocaleDateString('en-US', { month: 'short', year: '2-digit' })}
-            </text>
-        `;
-    }
-    return labels;
-}
-
-function groupHeatmapByWeek(heatMap) {
-    // Implementation of grouping heatmap data by week
-    return heatMap.reduce((acc, day) => {
-        const week = Math.floor(day.day / 7);
-        if (!acc[week]) acc[week] = [];
-        acc[week].push(day);
-        return acc;
-    }, {});
-}
-
-function generateHeatmapCells(weekData, cellSize, cellPadding) {
-    let cells = '';
-    Object.entries(weekData).forEach(([week, days], weekIndex) => {
-        days.forEach((day, dayIndex) => {
-            const x = 50 + weekIndex * (cellSize + cellPadding);
-            const y = 50 + dayIndex * (cellSize + cellPadding);
-            const intensity = calculateIntensity(day.value);
-            cells += `
-                <rect x="${x}" y="${y}" width="${cellSize}" height="${cellSize}"
-                      fill="${intensity}" rx="2">
-                    <title>${day.value} submissions on ${new Date(day.date).toLocaleDateString()}</title>
-                </rect>
-            `;
-        });
-    });
-    return cells;
-}
-
-function calculateIntensity(value) {
-    // Implementation of color intensity calculation based on value
-    if (value === 0) return '#ebedf0';
-    if (value <= 2) return '#9be9a8';
-    if (value <= 4) return '#40c463';
-    if (value <= 6) return '#30a14e';
-    return '#216e39';
-}
-
-function generateMonthLabels(weekData) {
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    return months.map((month, i) => {
-        const week = Math.floor(i / 7);
-        const currentMonth = new Date(weekData[week][0].date);
-        const isCurrentMonth = currentMonth.getMonth() === i % 7;
-        return `
-            <text x="${50 + i * 55}" y="30" class="label" text-anchor="middle" fill="${isCurrentMonth ? '#000' : '#666'}">
-                ${month}
-            </text>
-        `;
-    }).join('');
-}
-
-function generateDayLabels() {
-    const days = ['Mon', 'Wed', 'Fri'];
-    return days.map((day, i) => `
-        <text x="30" y="${65 + i * 24}" class="label" text-anchor="end">${day}</text>
-    `).join('');
-}
-
-function generateHeatmapLegend() {
-    const colors = ['#ebedf0', '#9be9a8', '#40c463', '#30a14e', '#216e39'];
-    const labels = ['No submissions', '1-2', '3-4', '5-6', '7+'];
-    let legend = '<g transform="translate(450, 20)">';
-    colors.forEach((color, i) => {
-        legend += `
-            <rect x="${i * 45}" y="0" width="10" height="10" fill="${color}"/>
-            <text x="${i * 45 + 15}" y="9" class="label">${labels[i]}</text>
-        `;
-    });
-    legend += '</g>';
-    return legend;
-}
-
-// -- DEFINE CODECHEF ROUTES --
 router.get('/:handle/profile', async (req, res) => {
+    const { handle } = req.params;
+    if (!isValidHandle(handle)) {
+        return sendSvg(res, errorSVG('Invalid CodeChef handle'), 400);
+    }
     try {
-        const { handle } = req.params;
         const data = await getCodechefData(handle);
-        const svg = await generateCodechefProfileSVG(data);
-        
-        res.setHeader('Content-Type', 'image/svg+xml');
-        res.setHeader('Cache-Control', 'public, max-age=300');
-        res.send(svg);
+        sendSvg(res, await generateCodechefProfileSVG(data));
     } catch (error) {
-        console.error('Codechef profile endpoint error:', error);
-        res.setHeader('Content-Type', 'image/svg+xml');
-        res.status(500).send(errorSVG('Unable to load Codechef profile'));
+        sendSvg(res, errorSVG(`Unable to load CodeChef profile for "${escapeXml(handle)}"`), 500);
     }
 });
 
 router.get('/:handle/graph', async (req, res) => {
+    const { handle } = req.params;
+    if (!isValidHandle(handle)) {
+        return sendSvg(res, errorSVG('Invalid CodeChef handle'), 400);
+    }
     try {
-        const { handle } = req.params;
-        const referer = req.get('Referer');
-        const userAgent = req.get('User-Agent');
-        
-        // If it's a direct browser request, redirect to Codechef API
-        if (referer || userAgent?.includes('Mozilla')) {
-            res.redirect(`https://codechef-api.vercel.app/rating/${handle}`);
-            return;
-        }
-
-        // For img tags, return an SVG that embeds the Codechef graph
-        const svg = `<?xml version="1.0" encoding="UTF-8" standalone="no"?>
-        <svg width="900" height="420" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
-            <style>
-                @import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600&amp;display=swap');
-                .loading { font: 600 16px 'Open Sans', sans-serif; }
-            </style>
-            <defs>
-                <clipPath id="clip">
-                    <rect width="900" height="420" rx="15"/>
-                </clipPath>
-            </defs>
-            <g clip-path="url(#clip)">
-                <rect width="900" height="420" fill="#ffffff"/>
-                <image width="900" height="420" 
-                       href="https://codechef-api.vercel.app/rating/${handle}"
-                       preserveAspectRatio="xMidYMid meet"/>
-                <text x="450" y="210" text-anchor="middle" class="loading" fill="#666">
-                    Loading rating graph...
-                </text>
-            </g>
-        </svg>`;
-
-        res.setHeader('Content-Type', 'image/svg+xml');
-        res.setHeader('Cache-Control', 'public, max-age=300');
-        res.send(svg);
+        const data = await getCodechefData(handle);
+        sendSvg(res, generateCodechefGraphSVG(data));
     } catch (error) {
-        console.error('Codechef graph endpoint error:', error);
-        res.setHeader('Content-Type', 'image/svg+xml');
-        res.status(500).send(errorSVG('Unable to load Codechef rating graph'));
+        sendSvg(res, errorSVG(`Unable to load CodeChef rating graph for "${escapeXml(handle)}"`), 500);
     }
 });
 
 router.get('/:handle/heatmap', async (req, res) => {
+    const { handle } = req.params;
+    if (!isValidHandle(handle)) {
+        return sendSvg(res, errorSVG('Invalid CodeChef handle'), 400);
+    }
     try {
-        const { handle } = req.params;
-        const referer = req.get('Referer');
-        const userAgent = req.get('User-Agent');
-        
-        // If it's a direct browser request, redirect to Codechef API
-        if (referer || userAgent?.includes('Mozilla')) {
-            res.redirect(`https://codechef-api.vercel.app/heatmap/${handle}`);
-            return;
-        }
-
-        // For img tags, return an SVG that embeds the Codechef heatmap
-        const svg = `<?xml version="1.0" encoding="UTF-8" standalone="no"?>
-        <svg width="700" height="250" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
-            <style>
-                @import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600&amp;display=swap');
-                .loading { font: 600 16px 'Open Sans', sans-serif; }
-            </style>
-            <defs>
-                <clipPath id="clip">
-                    <rect width="700" height="250" rx="15"/>
-                </clipPath>
-            </defs>
-            <g clip-path="url(#clip)">
-                <rect width="700" height="250" fill="#ffffff"/>
-                <image width="700" height="250" 
-                       href="https://codechef-api.vercel.app/heatmap/${handle}"
-                       preserveAspectRatio="xMidYMid meet"/>
-                <text x="350" y="125" text-anchor="middle" class="loading" fill="#666">
-                    Loading heatmap...
-                </text>
-            </g>
-        </svg>`;
-
-        res.setHeader('Content-Type', 'image/svg+xml');
-        res.setHeader('Cache-Control', 'public, max-age=300');
-        res.send(svg);
+        const data = await getCodechefData(handle);
+        sendSvg(res, generateCodechefHeatmapSVG(data));
     } catch (error) {
-        console.error('Codechef heatmap endpoint error:', error);
-        res.setHeader('Content-Type', 'image/svg+xml');
-        res.status(500).send(errorSVG('Unable to load Codechef heatmap'));
+        sendSvg(res, errorSVG(`Unable to load CodeChef heatmap for "${escapeXml(handle)}"`), 500);
     }
 });
 
